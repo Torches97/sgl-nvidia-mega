@@ -88,9 +88,16 @@ SCALE_TILE_ROWS = 128
 
 def _per_rank_host_table(table) -> bool:
     """Accept current replication or legacy layout, rejecting unknown tables."""
-    if hasattr(table, "replication"):
-        return table.replication == "none"
-    return getattr(table, "layout", None) == "per_rank"
+    if table is None:
+        return False
+    try:
+        replication = table.replication
+    except AttributeError:
+        try:
+            return table.layout == "per_rank"
+        except AttributeError:
+            return False
+    return replication == "none"
 
 
 def reason(engram, tp_size: int, table) -> str:

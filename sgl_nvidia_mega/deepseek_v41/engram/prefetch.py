@@ -43,7 +43,7 @@ SGLANG_READS = {
         "row_start",
         "_owned_rows",
         "_reduce_owned_rows",
-        "layout",
+        "replication|layout",
         "rows",
         "dim",
     ),
@@ -86,13 +86,20 @@ MAX_ROWS = plan.ENGRAM_PREFETCH_MAX_ROWS
 SCALE_TILE_ROWS = 128
 
 
+def _per_rank_host_table(table) -> bool:
+    """Accept current replication or legacy layout, rejecting unknown tables."""
+    if hasattr(table, "replication"):
+        return table.replication == "none"
+    return getattr(table, "layout", None) == "per_rank"
+
+
 def reason(engram, tp_size: int, table) -> str:
     """Why this Engram layer cannot prefetch, or "": the per-rank host ``table`` (the
     binding's; each rank looks up only its own rows) and an MXFP8 WKV with swizzled
     scales."""
     from sglang.srt.layers.quantization.fp8 import Fp8LinearMethod
 
-    if table is None or table.layout != "per_rank":
+    if not _per_rank_host_table(table):
         return (
             "needs the per-rank host Engram table (SGLANG_ENABLE_DSV41_ENGRAM_HOST_TABLE=1"
             ", SGLANG_DSV41_ENGRAM_HOST_TABLE_LAYOUT=per_rank)"
